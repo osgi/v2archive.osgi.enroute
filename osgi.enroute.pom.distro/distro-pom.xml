@@ -1,5 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
@@ -8,12 +9,39 @@
 	</properties>
 
 	<groupId>$(-groupid)</groupId>
-	<artifactId>osgi.enroute.pom.distro</artifactId>
+    <artifactId>osgi.enroute.pom.distro</artifactId>
+    <name>osgi.enroute.pom.distro</name>
 	<version>$(enroute-version)</version>
 	<packaging>jar</packaging>
 
 	<description>OSGi enRoute Distro POM</description>
 
+	<url>http://v2archive.enroute.osgi.org/</url>
+	<organization>
+		<name>OSGi Alliance</name>
+		<url>http://www.osgi.org/</url>
+	</organization>
+	<licenses>
+		<license>
+			<name>http://opensource.org/licenses/apache2.0.php</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0</url>
+			<distribution>repo</distribution>
+			<comments>Apache License, Version 2.0</comments>
+		</license>
+	</licenses>
+	<scm>
+		<url>https://github.com/osgi/v2archive.osgi.enroute</url>
+		<connection>scm:git:https://github.com/osgi/v2archive.osgi.enroute.git</connection>
+		<developerConnection>scm:git:git@github.com:osgi/v2archive.osgi.enroute.git</developerConnection>
+	</scm>
+	<developers>
+		<developer>
+			<id>osgi</id>
+			<email>info@osgi.org</email>
+			<name>OSGi Alliance</name>
+			<organization>OSGi Alliance</organization>
+		</developer>
+	</developers>
 
 	<dependencies>
 
