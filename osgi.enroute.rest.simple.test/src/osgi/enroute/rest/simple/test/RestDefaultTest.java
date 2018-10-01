@@ -69,7 +69,7 @@ public class RestDefaultTest extends TestCase {
 			rest.unregister();
 		}
 	}
-	
+
 	public void testOpenAPI() throws Exception {
 		ServiceRegistration<REST> rest = context.registerService(REST.class,
 				new RestExample(),
@@ -83,40 +83,45 @@ public class RestDefaultTest extends TestCase {
 		}
 	}
 
-	
 	interface TestParameters extends RESTRequest {
 		String default_();
+
 		String[] multiple();
 	}
+
 	public static class ParametersTest implements REST {
 		public String getFoo(TestParameters rnp) {
-			return rnp.default_()+"|"+Arrays.toString(rnp.multiple());
+			return rnp.default_() + "|" + Arrays.toString(rnp.multiple());
 		}
 	}
+
 	public void testParameters() throws Exception {
 		ServiceRegistration<REST> rest = context.registerService(REST.class,
 				new ParametersTest(), null);
 
 		try {
 			URL url = new URL("http://localhost:8080/rest/foo?default=default&multiple=1&multiple=2");
-			assertEquals( "\"default|[1, 2]\"", IO.collect(url.openStream()));
-			
+			assertEquals("\"default|[1, 2]\"", IO.collect(url.openStream()));
+
 		} finally {
 			rest.unregister();
 		}
 	}
-	
+
 	interface IncomingHeaders extends RESTRequest {
 		public String FOO_HEADER();
+
 		public String FOO$2CHEADER(); // ,
+
 		public String FOO$5FHEADER(); // _
 	}
+
 	public static class IncomingHeadersTest implements REST {
-		public String getFoo( IncomingHeaders rq) {
-			return rq.FOO_HEADER() + "|" + rq.FOO$2CHEADER() +"|"+rq.FOO$5FHEADER();
+		public String getFoo(IncomingHeaders rq) {
+			return rq.FOO_HEADER() + "|" + rq.FOO$2CHEADER() + "|" + rq.FOO$5FHEADER();
 		}
 	}
-	
+
 	public void testIncomingHeaders() throws Exception {
 		ServiceRegistration<REST> rest = context.registerService(REST.class,
 				new IncomingHeadersTest(),
@@ -128,42 +133,43 @@ public class RestDefaultTest extends TestCase {
 			con.setRequestProperty("Foo-Header", "-");
 			con.setRequestProperty("Foo,Header", ",");
 			con.setRequestProperty("Foo_Header", "_");
-			assertEquals( "\"-|,|_\"", IO.collect(con.getInputStream()));
-			
+			assertEquals("\"-|,|_\"", IO.collect(con.getInputStream()));
+
 			OperationObject foo = getOO("/foo").get;
 			assertNotNull(foo);
 			ResponseObject responseObject = foo.responses.get("200");
 			assertNotNull(responseObject);
-			
-			Object[] array = foo.parameters.stream().map( p -> p.name ).sorted().toArray();
-			assertEquals( "FOO,HEADER", array[0]);
-			assertEquals( "FOO-HEADER", array[1]);
-			assertEquals( "FOO_HEADER", array[2]);
+
+			Object[] array = foo.parameters.stream().map(p -> p.name).sorted().toArray();
+			assertEquals("FOO,HEADER", array[0]);
+			assertEquals("FOO-HEADER", array[1]);
+			assertEquals("FOO_HEADER", array[2]);
 
 			assertEquals(PrimitiveType.STRING, responseObject.schema.type);
-			
+
 		} finally {
 			rest.unregister();
 		}
 	}
 
-
 	public static class OutgoingHeadersResponse extends RESTResponse {
 		private static final long serialVersionUID = 1L;
-		public OutgoingHeadersResponse(int code, String string) {
-			super(code,string);
-		}
 
+		public OutgoingHeadersResponse(int code, String string) {
+			super(code, string);
+		}
 
 		public int X_MAX_RATE;
 	}
+
 	public static class OutgoingHeadersTest implements REST {
-		public OutgoingHeadersResponse getFoo( ) {
+		public OutgoingHeadersResponse getFoo() {
 			OutgoingHeadersResponse out = new OutgoingHeadersResponse(201, "Foo");
 			out.X_MAX_RATE = 100;
 			return out;
 		}
 	}
+
 	public void testOutgoingHeaders() throws Exception {
 		ServiceRegistration<REST> rest = context.registerService(REST.class,
 				new OutgoingHeadersTest(),
@@ -172,8 +178,8 @@ public class RestDefaultTest extends TestCase {
 		try {
 			URL url = new URL("http://localhost:8080/rest/foo");
 			HttpURLConnection con = (HttpURLConnection) url.openConnection();
-			assertEquals( "\"Foo\"", IO.collect(con.getInputStream()));
-			assertEquals( "100", con.getHeaderField("X-MAX-RATE"));
+			assertEquals("\"Foo\"", IO.collect(con.getInputStream()));
+			assertEquals("100", con.getHeaderField("X-MAX-RATE"));
 		} finally {
 			rest.unregister();
 		}
@@ -181,15 +187,18 @@ public class RestDefaultTest extends TestCase {
 
 	public static class ErrorResponse extends RESTResponse {
 		private static final long serialVersionUID = 1L;
+
 		public ErrorResponse() {
 			super(418);
 		}
 	}
+
 	public static class ErrorResponseTest implements REST {
 		public String getFoo() throws ErrorResponse {
 			throw new ErrorResponse();
 		}
 	}
+
 	public void testErrorResponse() throws Exception {
 		ServiceRegistration<REST> rest = context.registerService(REST.class,
 				new ErrorResponseTest(), null);
@@ -197,22 +206,20 @@ public class RestDefaultTest extends TestCase {
 		try {
 			URL url = new URL("http://localhost:8080/rest/foo");
 			HttpURLConnection con = (HttpURLConnection) url.openConnection();
-			assertEquals( 418, con.getResponseCode());
+			assertEquals(418, con.getResponseCode());
 		} finally {
 			rest.unregister();
 		}
 	}
-	
-	
+
 	private JSONCodec getCodec() {
 		JSONCodec jsonCodec = new JSONCodec();
 		jsonCodec.addHandler(PrimitiveType.class, new EnumHandler(PrimitiveType.class) {
-			
+
 			@Override
 			public Object decode(Decoder dec, String s) throws Exception {
-				return super.decode(dec,s.toUpperCase());
+				return super.decode(dec, s.toUpperCase());
 			}
-
 
 		});
 		return jsonCodec;
@@ -643,11 +650,11 @@ public class RestDefaultTest extends TestCase {
 			httpCon.setRequestMethod("POST");
 			if (payload != null) {
 				httpCon.setDoOutput(true);
-				DataOutputStream dos = new DataOutputStream(
-						httpCon.getOutputStream());
-				JSONCodec codec = new JSONCodec();
-				codec.enc().charset("UTF-8").to(dos).put(payload);
-				dos.close();
+				try (DataOutputStream dos = new DataOutputStream(
+						httpCon.getOutputStream())) {
+					JSONCodec codec = new JSONCodec();
+					codec.enc().charset("UTF-8").to(dos).put(payload);
+				}
 			}
 			httpCon.connect();
 			String s = IO.collect(httpCon.getInputStream());
@@ -666,11 +673,11 @@ public class RestDefaultTest extends TestCase {
 			httpCon.setRequestMethod("PUT");
 			if (payload != null) {
 				httpCon.setDoOutput(true);
-				DataOutputStream dos = new DataOutputStream(
-						httpCon.getOutputStream());
-				JSONCodec codec = new JSONCodec();
-				codec.enc().charset("UTF-8").to(dos).put(payload);
-				dos.close();
+				try (DataOutputStream dos = new DataOutputStream(
+						httpCon.getOutputStream())) {
+					JSONCodec codec = new JSONCodec();
+					codec.enc().charset("UTF-8").to(dos).put(payload);
+				}
 			}
 			httpCon.connect();
 			String s = IO.collect(httpCon.getInputStream());
@@ -697,7 +704,7 @@ public class RestDefaultTest extends TestCase {
 		assertNotNull(operation, pathItemObject);
 		return pathItemObject;
 	}
-	
+
 	DTOs dtos;
 
 	@Reference

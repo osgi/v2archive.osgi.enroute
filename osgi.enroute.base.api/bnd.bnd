@@ -54,7 +54,9 @@ Provide-Capability: \
 Private-Package: \
 	osgi.enroute.base.provided
 
-Conditional-Package:	org.slf4j.*
+-conditionalpackage:	org.slf4j.*
+
+-fixupmessages.baseapi      Split package, multiple jars provide the same package:org/osgi/service/*
 
 -workingset base
 -buildpath: \

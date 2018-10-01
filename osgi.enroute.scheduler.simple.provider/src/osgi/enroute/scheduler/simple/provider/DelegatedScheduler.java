@@ -23,6 +23,7 @@ public class DelegatedScheduler implements Scheduler {
 	private InternalSchedulerImpl delegate;
 	private Set<Closeable> closeables = new HashSet<>();
 
+	@SuppressWarnings("resource")
 	@Deactivate
 	void close() {
 		while (true) {

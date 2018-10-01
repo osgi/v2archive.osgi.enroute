@@ -49,21 +49,21 @@ import osgi.enroute.jsonrpc.dto.JSON.Response;
 @RequireHttpImplementation
 @Designate(ocd = JSONRpcServlet.Config.class)
 @Component(//
-name = "osgi.web.jsonrpc", //
-service = Servlet.class, //
-configurationPolicy = ConfigurationPolicy.OPTIONAL, property = {
-		HttpWhiteboardConstants.HTTP_WHITEBOARD_SERVLET_PATTERN + "=" + "/jsonrpc/2.0/*" })
+		name = "osgi.web.jsonrpc", //
+		service = Servlet.class, //
+		configurationPolicy = ConfigurationPolicy.OPTIONAL, property = {
+				HttpWhiteboardConstants.HTTP_WHITEBOARD_SERVLET_PATTERN + "=" + "/jsonrpc/2.0/*" })
 public class JSONRpcServlet extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	final static Converter converter = new Converter();
-	final static JSONCodec codec = new JSONCodec();
+	private static final long	serialVersionUID	= 1L;
+	final static Converter		converter			= new Converter();
+	final static JSONCodec		codec				= new JSONCodec();
 
 	static {
 		codec.setIgnorenull(true);
 	}
 
-	final ConcurrentHashMap<String, JSONRPC> endpoints = new ConcurrentHashMap<String, JSONRPC>();
-	final AtomicInteger ping = new AtomicInteger(10000);
+	final ConcurrentHashMap<String, JSONRPC>	endpoints	= new ConcurrentHashMap<String, JSONRPC>();
+	final AtomicInteger							ping		= new AtomicInteger(10000);
 
 	static {
 		converter.hook(byte[].class, new Converter.Hook() {
@@ -79,22 +79,21 @@ public class JSONRpcServlet extends HttpServlet {
 			}
 		});
 	}
-	
+
 	@ObjectClassDefinition
 	@interface Config {
 		boolean angular();
 
 		boolean trace();
-		
+
 		String osgi_http_whiteboard_servlet_pattern();
 	}
 
-
-	Config config;
-	boolean angular;
-	boolean trace = false;
+	Config		config;
+	boolean		angular;
+	boolean		trace	= false;
 	@Reference
-	LogService log;
+	LogService	log;
 
 	@Activate
 	void actvate(Config config) throws Exception {
@@ -165,14 +164,14 @@ public class JSONRpcServlet extends HttpServlet {
 				if (trace)
 					System.out.println("Result " + result);
 
-				OutputStream out = rsp.getOutputStream();
+				try (OutputStream out = rsp.getOutputStream()) {
 
-				if (result != null) {
-					rsp.setContentType("application/json;charset=UTF-8");
-					codec.enc().writeDefaults().to(out).put(result);
+					if (result != null) {
+						rsp.setContentType("application/json;charset=UTF-8");
+						codec.enc().writeDefaults().to(out).put(result);
+					}
+
 				}
-
-				out.close();
 			} catch (Exception e) {
 				rsp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
 			}
@@ -286,9 +285,9 @@ public class JSONRpcServlet extends HttpServlet {
 	}
 
 	static public class PingResponse extends DTO {
-		public String nonce;
-		public long time;
-		public int sequence;
+		public String	nonce;
+		public long		time;
+		public int		sequence;
 	}
 
 	public PingResponse __ping(String endpointName, Request request, HttpServletRequest rq, HttpServletResponse rsp,
@@ -300,7 +299,7 @@ public class JSONRpcServlet extends HttpServlet {
 		return pr;
 	}
 
-	@Reference(cardinality=ReferenceCardinality.MULTIPLE, policy=ReferencePolicy.DYNAMIC)
+	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
 	public synchronized void addEndpoint(osgi.enroute.jsonrpc.api.JSONRPC resourceManager, Map<String, Object> map) {
 		String name = (String) map.get(JSONRPC.ENDPOINT);
 		endpoints.put(name, resourceManager);

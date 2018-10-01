@@ -53,17 +53,18 @@ import osgi.enroute.http.capabilities.RequireHttpImplementation;
  * 
  */
 @RequireHttpImplementation
-@Component(name = "osgi.eventadmin.sse", property = HttpWhiteboardConstants.HTTP_WHITEBOARD_SERVLET_PATTERN+"=/sse/1/*", service = Servlet.class, configurationPolicy = ConfigurationPolicy.OPTIONAL)
+@Component(name = "osgi.eventadmin.sse", property = HttpWhiteboardConstants.HTTP_WHITEBOARD_SERVLET_PATTERN
+		+ "=/sse/1/*", service = Servlet.class, configurationPolicy = ConfigurationPolicy.OPTIONAL)
 public class ServerSideEventImpl extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-	private static JSONCodec codec = new JSONCodec();
-	private static byte[] prelude;
-	private static Random random = new SecureRandom();
-	final Map<String, Thread> threads = new ConcurrentHashMap<String, Thread>();
-	BundleContext context;
-	
+	private static final long	serialVersionUID	= 1L;
+	private static JSONCodec	codec				= new JSONCodec();
+	private static byte[]		prelude;
+	private static Random		random				= new SecureRandom();
+	final Map<String, Thread>	threads				= new ConcurrentHashMap<String, Thread>();
+	BundleContext				context;
+
 	@Reference
-	LogService log;
+	LogService					log;
 
 	@Activate
 	void activate(BundleContext context) {
@@ -121,81 +122,83 @@ public class ServerSideEventImpl extends HttpServlet {
 		rsp.setContentType("text/event-stream;charset=utf-8");
 
 		final Thread thread = Thread.currentThread();
-		OutputStream out = rsp.getOutputStream();
-
-		//
-		// We need to clean up old connections from this process
-		// The caller gives us an instance id, which it calculates per
-		// JS/page. If this same page reconnects, we kill the old
-		// connection
-		//
-
-		threads.put(instanceId, thread);
-
-		final PrintStream pout = new PrintStream(out);
-		final BlockingQueue<Event> eventQueue = new LinkedBlockingQueue<Event>(
-				20);
-		final AtomicReference<Closeable> ref = new AtomicReference<Closeable>(
-				out);
-		ServiceRegistration<?> registration = register(topic, eventQueue,
-				instanceId, ref, thread);
-
-		try {
+		try (OutputStream out = rsp.getOutputStream()) {
 
 			//
-			// The 'programmers' at M$ implemented streaming but forgot about a
-			// lower layer's buffering. So to make streaming work, we must send
-			// a 2k prelude
+			// We need to clean up old connections from this process
+			// The caller gives us an instance id, which it calculates per
+			// JS/page. If this same page reconnects, we kill the old
+			// connection
 			//
 
-			String userAgent = rq.getHeader("User-Agent");
-			if (userAgent != null && userAgent.contains("MSIE 9.")) {
-				out.write(getPrelude());
-				out.flush();
-			}
+			threads.put(instanceId, thread);
 
-			pout.printf(": welcome\n\n");
-			pout.flush();
+			final PrintStream pout = new PrintStream(out);
+			final BlockingQueue<Event> eventQueue = new LinkedBlockingQueue<Event>(
+					20);
+			final AtomicReference<Closeable> ref = new AtomicReference<Closeable>(
+					out);
+			ServiceRegistration<?> registration = register(topic, eventQueue,
+					instanceId, ref, thread);
 
-			while (true) {
-				Event event = eventQueue.poll(2, TimeUnit.SECONDS);
-				if (event == null) {
-					pout.print(":\n\n");
-				} else {
-					Map<String, Object> props = new HashMap<String, Object>();
-					for (String name : event.getPropertyNames()) {
-						props.put(name, event.getProperty(name));
-					}
-					pout.printf("type: org.osgi.service.eventadmin;topic=%s\n",
-							topic);
+			try {
 
-					String json = codec.enc().put(props).toString();
-					pout.printf("data: %s\n\n", json);
-				}
-				pout.flush();
-			}
-
-		} catch (InterruptedException ie) {
-			rsp.setStatus(HttpServletResponse.SC_OK);
-		} catch (Exception e) {
-			log.log(LogService.LOG_INFO, "Quiting " + topic, e);
-			// time to close ...
-		} finally {
-			threads.remove(instanceId);
-			registration.unregister();
-			if (ref.getAndSet(null) == null) {
-				
 				//
-				// A little grace period since we could be interrupted
-				// and do not want to kill the next request
+				// The 'programmers' at M$ implemented streaming but forgot
+				// about a
+				// lower layer's buffering. So to make streaming work, we must
+				// send
+				// a 2k prelude
+				//
 
-				try {
-					Thread.sleep(10);
-				} catch (InterruptedException e) {
-					// OK, we we're hoping for it
+				String userAgent = rq.getHeader("User-Agent");
+				if (userAgent != null && userAgent.contains("MSIE 9.")) {
+					out.write(getPrelude());
+					out.flush();
+				}
+
+				pout.printf(": welcome\n\n");
+				pout.flush();
+
+				while (true) {
+					Event event = eventQueue.poll(2, TimeUnit.SECONDS);
+					if (event == null) {
+						pout.print(":\n\n");
+					} else {
+						Map<String, Object> props = new HashMap<String, Object>();
+						for (String name : event.getPropertyNames()) {
+							props.put(name, event.getProperty(name));
+						}
+						pout.printf("type: org.osgi.service.eventadmin;topic=%s\n",
+								topic);
+
+						String json = codec.enc().put(props).toString();
+						pout.printf("data: %s\n\n", json);
+					}
+					pout.flush();
+				}
+
+			} catch (InterruptedException ie) {
+				rsp.setStatus(HttpServletResponse.SC_OK);
+			} catch (Exception e) {
+				log.log(LogService.LOG_INFO, "Quiting " + topic, e);
+				// time to close ...
+			} finally {
+				threads.remove(instanceId);
+				registration.unregister();
+				if (ref.getAndSet(null) == null) {
+
+					//
+					// A little grace period since we could be interrupted
+					// and do not want to kill the next request
+
+					try {
+						Thread.sleep(10);
+					} catch (InterruptedException e) {
+						// OK, we we're hoping for it
+					}
 				}
 			}
-			out.close();
 		}
 	}
 
@@ -227,32 +230,35 @@ public class ServerSideEventImpl extends HttpServlet {
 						// us. So we kill it
 						//
 
-						Closeable o = out.getAndSet(null);
-						if (o == null)
-							//
-							// Already killed
-							//
-							return;
+						try (Closeable o = out.getAndSet(null)) {
+							if (o == null)
+								//
+								// Already killed
+								//
+								return;
 
-						log.log(LogService.LOG_WARNING,
-								"Killing orphaned GUI thread beause queue is full");
-
-						//
-						// First interrupt it so we kill it nicely
-						//
-
-						try {
-							thread.interrupt();
+							log.log(LogService.LOG_WARNING,
+									"Killing orphaned GUI thread beause queue is full");
 
 							//
-							// Then the hammer to kill for real
+							// First interrupt it so we kill it nicely
 							//
 
-							o.close();
+							try {
+								thread.interrupt();
 
-						} catch (IOException e) {
+								//
+								// Then the hammer to kill for real
+								//
+
+								o.close();
+
+							} catch (IOException e) {
+							}
+
+						} catch (IOException e1) {
+							throw new RuntimeException(e1);
 						}
-
 					}
 				}, p);
 		return registration;

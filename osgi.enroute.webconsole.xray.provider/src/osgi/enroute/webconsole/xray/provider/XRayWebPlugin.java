@@ -80,21 +80,21 @@ import osgi.enroute.webserver.capabilities.RequireWebServerExtender;
 @RequireWebServerExtender
 @RequireD3Webresource(resource = "d3.min.js")
 public final class XRayWebPlugin extends AbstractWebConsolePlugin implements BundleActivator {
-	private static final long serialVersionUID = 1L;
-	private static String PLUGIN_NAME = "xray";
-	private static String PREFIX = "/" + PLUGIN_NAME + "/";
-	final static int TITLE_LENGTH = 14;
-	final static Pattern LISTENER_INFO_PATTERN = Pattern.compile("\\(objectClass=([^)]+)\\)");
-	final static JSONCodec codec = new JSONCodec();
+	private static final long					serialVersionUID		= 1L;
+	private static String						PLUGIN_NAME				= "xray";
+	private static String						PREFIX					= "/" + PLUGIN_NAME + "/";
+	final static int							TITLE_LENGTH			= 14;
+	final static Pattern						LISTENER_INFO_PATTERN	= Pattern.compile("\\(objectClass=([^)]+)\\)");
+	final static JSONCodec						codec					= new JSONCodec();
 
-	private BundleContext context;
-	private LogReaderService logReader;
-	private LogService log;
-	private MultiMap<String, BundleContext> listenerContexts = new MultiMap<String, BundleContext>();
-	private ServiceRegistration<ListenerHook> lhook;
-	private volatile ServiceComponentRuntime scr;
-	private volatile ConfigurationAdmin cfg;
-	private volatile boolean quiting = false;
+	private BundleContext						context;
+	private LogReaderService					logReader;
+	private LogService							log;
+	private MultiMap<String, BundleContext>		listenerContexts		= new MultiMap<String, BundleContext>();
+	private ServiceRegistration<ListenerHook>	lhook;
+	private volatile ServiceComponentRuntime	scr;
+	private volatile ConfigurationAdmin			cfg;
+	private volatile boolean					quiting					= false;
 
 	/*
 	 * Called at startup
@@ -254,9 +254,9 @@ public final class XRayWebPlugin extends AbstractWebConsolePlugin implements Bun
 				}
 				rsp.setContentType("application/json");
 				rsp.setCharacterEncoding("utf-8");
-				OutputStream out = rsp.getOutputStream();
-				codec.enc().charset("utf-8").to(out).writeDefaults().put(output).flush();
-				out.close();
+				try (OutputStream out = rsp.getOutputStream()) {
+					codec.enc().charset("utf-8").to(out).writeDefaults().put(output).flush();
+				}
 			}
 		} catch (Exception e) {
 			throw new RuntimeException(e);
@@ -446,7 +446,7 @@ public final class XRayWebPlugin extends AbstractWebConsolePlugin implements Bun
 		Iterator<BundleDef> it = bs.iterator();
 		for (int i = 0; i < result.length; i++) {
 			BundleDef next = it.next();
-			if ( next != null)
+			if (next != null)
 				result[i] = next.index;
 			else
 				result[i] = -1;
@@ -638,21 +638,21 @@ public final class XRayWebPlugin extends AbstractWebConsolePlugin implements Bun
 				cdef.references = new HashSet<>();
 
 				cdef.services = description.serviceInterfaces;
-				for ( String service : cdef.services) {
-					cdef.references.add( "=>" + service);
+				for (String service : cdef.services) {
+					cdef.references.add("=>" + service);
 				}
 				for (SatisfiedReferenceDTO ref : config.satisfiedReferences) {
-					Set<Long>	services = new TreeSet<>();
-					for ( ServiceReferenceDTO sref : ref.boundServices) {
-						services.add( sref.id);
+					Set<Long> services = new TreeSet<>();
+					for (ServiceReferenceDTO sref : ref.boundServices) {
+						services.add(sref.id);
 					}
-					cdef.references.add( ref.name + "<=︎ " + services);
+					cdef.references.add(ref.name + "<=︎ " + services);
 				}
 				for (UnsatisfiedReferenceDTO ref : config.unsatisfiedReferences) {
-					cdef.references.add( ref.name +"?" + ref.target);
-					cdef.unsatisfied=true;
+					cdef.references.add(ref.name + "?" + ref.target);
+					cdef.unsatisfied = true;
 				}
-				
+
 				bd.components.add(cdef);
 			}
 
@@ -666,39 +666,39 @@ public final class XRayWebPlugin extends AbstractWebConsolePlugin implements Bun
 		@SuppressWarnings("unchecked")
 		Enumeration<LogEntry> e = logReader.getLog();
 		StringBuilder sb = new StringBuilder();
-		Formatter f = new Formatter(sb);
+		try (Formatter f = new Formatter(sb)) {
 
-		while (e.hasMoreElements()) {
-			LogEntry entry = e.nextElement();
-			if (entry.getBundle() == bundle) {
-				if (entry.getTime() + 2 * 60 * 1000 > System.currentTimeMillis()) {
-					if (entry.getLevel() <= LogService.LOG_WARNING) {
-						String message = "";
-						if (entry.getException() != null) {
-							StringWriter sw = new StringWriter();
-							PrintWriter pw = new PrintWriter(sw);
+			while (e.hasMoreElements()) {
+				LogEntry entry = e.nextElement();
+				if (entry.getBundle() == bundle) {
+					if (entry.getTime() + 2 * 60 * 1000 > System.currentTimeMillis()) {
+						if (entry.getLevel() <= LogService.LOG_WARNING) {
+							String message = "";
+							if (entry.getException() != null) {
+								StringWriter sw = new StringWriter();
+								PrintWriter pw = new PrintWriter(sw);
 
-							Throwable t = entry.getException();
-							while (t instanceof InvocationTargetException) {
+								Throwable t = entry.getException();
+								while (t instanceof InvocationTargetException) {
+									pw.println(t.getMessage());
+									t = ((InvocationTargetException) t).getTargetException();
+								}
+
 								pw.println(t.getMessage());
-								t = ((InvocationTargetException) t).getTargetException();
+								t.printStackTrace(pw);
+								pw.flush();
+								message = sw.toString();
 							}
-
-							pw.println(t.getMessage());
-							t.printStackTrace(pw);
-							pw.flush();
-							message = sw.toString();
+							f.format("%s:%s %s\n", entry.getLevel() == LogService.LOG_WARNING ? "W" : "E",
+									entry.getMessage(), message);
+							if (entry.getLevel() == LogService.LOG_WARNING)
+								bd.errors |= true;
 						}
-						f.format("%s:%s %s\n", entry.getLevel() == LogService.LOG_WARNING ? "W" : "E",
-								entry.getMessage(), message);
-						if (entry.getLevel() == LogService.LOG_WARNING)
-							bd.errors |= true;
 					}
 				}
 			}
+			bd.log = sb.toString();
 		}
-		bd.log = sb.toString();
-		f.close();
 	}
 
 	// @Reference(type = '?')
@@ -744,7 +744,7 @@ public final class XRayWebPlugin extends AbstractWebConsolePlugin implements Bun
 	private synchronized List<Bundle> getListeners(String name) {
 		List<BundleContext> namedContexts = listenerContexts.get(name);
 		List<Bundle> listeners;
-		
+
 		if (namedContexts == null) {
 			listeners = Collections.emptyList();
 		} else {

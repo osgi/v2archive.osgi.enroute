@@ -21,11 +21,11 @@ import osgi.enroute.iot.gpio.util.ICAdapter;
 @Component(service = IC.class, property = {
 		Debug.COMMAND_SCOPE + "=lego", Debug.COMMAND_FUNCTION + "=fwd",
 		Debug.COMMAND_FUNCTION + "=brake", Debug.COMMAND_FUNCTION + "=out" })
-public class Command extends ICAdapter<Void, Analog>{
-	final int PULSE_WIDTH = 13;
-	int toggle = 0;
-	int channel = 0;
-	int output = 0;
+public class Command extends ICAdapter<Void, Analog> {
+	final int	PULSE_WIDTH	= 13;
+	int			toggle		= 0;
+	int			channel		= 0;
+	int			output		= 0;
 
 	int send_low(ByteBuffer pulses) {
 		int i;
@@ -159,69 +159,71 @@ public class Command extends ICAdapter<Void, Analog>{
 		count--;
 
 		// Open lirc_rpi devices directly
-		FileOutputStream fd = new FileOutputStream(new File("/dev/lirc0"));
+		try (FileOutputStream fd = new FileOutputStream(new File("/dev/lirc0"))) {
 
-		byte[] array = pulses.array();
-		System.out.println("L=" + array.length + " /4 = " + array.length / 4
-				+ " count = " + count);
+			byte[] array = pulses.array();
+			System.out.println("L=" + array.length + " /4 = " + array.length / 4
+					+ " count = " + count);
 
-		// When a button is held down and the protocol needs update to prevent
-		// timeout the message is send continuously with a time interval as
-		// between message 4 and 5. First after all buttons are released and
-		// this is transmitted the transmitter will shut down.
-		//
-		// If tm is the maximum message length (16ms) and Ch is the channel
-		// number, then the delay before transmitting the first message is then
-		// the delay before transmitting the first message is (4 – Ch)*tm
-		//
+			// When a button is held down and the protocol needs update to
+			// prevent
+			// timeout the message is send continuously with a time interval as
+			// between message 4 and 5. First after all buttons are released and
+			// this is transmitted the transmitter will shut down.
+			//
+			// If tm is the maximum message length (16ms) and Ch is the channel
+			// number, then the delay before transmitting the first message is
+			// then
+			// the delay before transmitting the first message is (4 – Ch)*tm
+			//
 
-		// The time from start to start for the next 2 messages is: The time
-		// from start to start for the following messages is:
+			// The time from start to start for the next 2 messages is: The time
+			// from start to start for the following messages is:
 
-		// Send command 5 times
+			// Send command 5 times
 
-		long now = System.currentTimeMillis();
+			long now = System.currentTimeMillis();
 
-		for (i = 0; i < 5; i++) {
-			long delay;
+			for (i = 0; i < 5; i++) {
+				long delay;
 
-			switch (i) {
-			default:
-			case 0:
-				delay = 0;
-				break;
+				switch (i) {
+				default:
+				case 0:
+					delay = 0;
+					break;
 
-			// (4 – Ch)*tm
-			case 1:
-				delay = 5 * tm;
-				break;
+				// (4 – Ch)*tm
+				case 1:
+					delay = 5 * tm;
+					break;
 
-			case 2:
-				delay = (4 - channel) * tm;
-				break;
+				case 2:
+					delay = (4 - channel) * tm;
+					break;
 
-			// The time from start to start for the following messages is:
-			// (6 + 2*Ch)*tm
-			case 3:
-			case 4:
-				delay = (6 + 2 * channel) * tm;
+				// The time from start to start for the following messages is:
+				// (6 + 2*Ch)*tm
+				case 3:
+				case 4:
+					delay = (6 + 2 * channel) * tm;
+				}
+
+				long now2 = System.currentTimeMillis();
+				delay = now + delay - now2;
+				if (delay > 0) {
+					Thread.sleep(delay);
+					now = now2;
+				}
+
+				fd.write(array, 0, count * 4);
+				fd.flush();
 			}
-
-			long now2 = System.currentTimeMillis();
-			delay = now + delay - now2;
-			if (delay > 0) {
-				Thread.sleep(delay);
-				now = now2;
-			}
-
-			fd.write(array, 0, count * 4);
-			fd.flush();
 		}
-		fd.close();
 
 	}
-	
-	public void out( double value ) {
+
+	public void out(double value) {
 		out().set(value);
 	}
 
