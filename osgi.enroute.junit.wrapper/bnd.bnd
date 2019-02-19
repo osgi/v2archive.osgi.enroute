@@ -20,4 +20,4 @@ Import-Package:\
 -buildpath: \
 	junit:junit
 
--includeresource: LICENSE.txt
+-includeresource: LICENSE.txt, OSGI-OPT/src=@${repo;junit:junit:jar:sources}
