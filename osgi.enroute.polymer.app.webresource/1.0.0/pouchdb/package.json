@@ -16,7 +16,7 @@
   ],
   "dependencies": {
     "argsarray": "0.0.1",
-    "debug": "2.2.0",
+    "debug": "4.1.1",
     "double-ended-queue": "2.0.0-0",
     "fruitdown": "1.0.2",
     "inherits": "2.0.1",
